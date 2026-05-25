@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>MVIMG Extractor</string>
+    <string>小米动态照片导出</string>
     <key>CFBundleDisplayName</key>
-    <string>MVIMG 提取器</string>
+    <string>小米动态照片导出</string>
     <key>CFBundleIdentifier</key>
     <string>com.mvimg.extractor</string>
     <key>CFBundleVersion</key>
-    <string>1.0.0</string>
+    <string>0.1.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>0.1</string>
     <key>CFBundleExecutable</key>
     <string>mvimg-extractor</string>
     <key>CFBundlePackageType</key>
