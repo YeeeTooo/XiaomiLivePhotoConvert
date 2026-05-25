@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+__MACOSX/
+*.app/Contents/Resources/AppIcon.iconset/
+
+# Python
+__pycache__/
+*.pyc
+
+# Test data
+test_photos/
+*.mp4.backup
