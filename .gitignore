@@ -9,4 +9,5 @@ __pycache__/
 
 # Build artifacts (go in Releases, not repo)
 *.zip
+*.dmg
 *.bat.bak
