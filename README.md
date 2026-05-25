@@ -31,8 +31,8 @@ MVIMG_20250101.jpg  ──→  MVIMG_20250101.jpg（原图不动）
 
 ### macOS 使用方法
 
-1. 下载 `小米动态照片导出_macOS.dmg`，双击打开
-2. 把「小米动态照片导出」拖到 `Applications` 文件夹（和普通 Mac 软件一样）
+1. 下载 `XiaomiLivePhotoConvert_macOS.dmg`，双击打开
+2. 把 `XiaomiLivePhotoConvert` 拖到 `Applications` 文件夹（和普通 Mac 软件一样）
 3. 从启动台打开 App → 选择装了 MVIMG 照片的文件夹 → 完成
 
 > 所有 Mac 自带 Python 3，零依赖，绿色免安装。

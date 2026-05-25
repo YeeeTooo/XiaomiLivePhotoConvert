@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>小米动态照片导出</string>
+    <string>Xiaomi Live Photo Converter</string>
     <key>CFBundleDisplayName</key>
-    <string>小米动态照片导出</string>
+    <string>Xiaomi Live Photo Converter</string>
     <key>CFBundleIdentifier</key>
     <string>com.xiaomi.live-photo-convert</string>
     <key>CFBundleVersion</key>
@@ -42,6 +42,11 @@
     </array>
     <key>LSMinimumSystemVersion</key>
     <string>10.14</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>zh_CN</string>
+    </array>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>

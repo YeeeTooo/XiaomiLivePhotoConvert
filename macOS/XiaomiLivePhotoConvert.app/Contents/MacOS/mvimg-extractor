@@ -1,0 +1,198 @@
+#!/bin/bash
+# Xiaomi Live Photo Converter — macOS App entry point
+# Drag a folder onto the app icon, or double-click to pick a folder.
+# Auto-detects system language for UI (Chinese / English).
+
+# ─── Language detection ───
+LANG_CODE=$(defaults read -g AppleLocale 2>/dev/null | cut -d_ -f1)
+if [ "$LANG_CODE" = "zh" ]; then
+    APP_NAME="小米动态照片导出"
+    MSG_CHOOSE_FOLDER="选择包含 MVIMG 动态照片的文件夹："
+    MSG_NO_PHOTOS="该文件夹中没有找到 MVIMG 开头的动态照片。\n\n提示：小米动态照片文件名以 MVIMG 开头。"
+    MSG_ERROR="无法访问文件夹："
+    MSG_PROCESS_ERROR="处理出错，请检查文件夹权限。"
+    MSG_NOTIFY_NONE="没有找到动态照片"
+    MSG_RESULT_TITLE="小米动态照片导出 — 完成"
+    MSG_SUCCESS="✅ 成功提取"
+    MSG_FAILED="❌ 失败："
+    MSG_SKIPPED="⏭ 跳过（已有）："
+    MSG_SAVED="视频已保存在原文件夹："
+    MSG_SEGMENTS="段视频"
+    MSG_OPEN_FOLDER="打开文件夹"
+    MSG_CLOSE="关闭"
+    MSG_OK="好"
+    MSG_NOTIFY_DONE="成功提取"
+    MSG_SKIP_SEG="段，跳过"
+else
+    APP_NAME="Xiaomi Live Photo Converter"
+    MSG_CHOOSE_FOLDER="Select the folder containing MVIMG dynamic photos:"
+    MSG_NO_PHOTOS="No MVIMG dynamic photos found in this folder.\n\nHint: Xiaomi dynamic photo filenames start with MVIMG."
+    MSG_ERROR="Cannot access folder: "
+    MSG_PROCESS_ERROR="Processing error. Please check folder permissions."
+    MSG_NOTIFY_NONE="No dynamic photos found"
+    MSG_RESULT_TITLE="Xiaomi Live Photo Converter — Done"
+    MSG_SUCCESS="✅ Extracted"
+    MSG_FAILED="❌ Failed: "
+    MSG_SKIPPED="⏭ Skipped (already exists): "
+    MSG_SAVED="Videos saved in original folder:"
+    MSG_SEGMENTS="video(s)"
+    MSG_OPEN_FOLDER="Open Folder"
+    MSG_CLOSE="Close"
+    MSG_OK="OK"
+    MSG_NOTIFY_DONE="Extracted"
+    MSG_SKIP_SEG=", skipped "
+fi
+
+# ─── Embedded extraction script ───
+run_extraction() {
+    local FOLDER="$1"
+    /usr/bin/python3 - "$FOLDER" << 'PYEOF'
+import sys, os, struct
+
+MP4_MAGIC = b'ftyp'
+
+def find_mp4_offset(filepath):
+    with open(filepath, 'rb') as f:
+        offset = 0
+        while True:
+            data = f.read(65536)
+            if not data:
+                break
+            pos = data.find(MP4_MAGIC)
+            while pos != -1:
+                if pos >= 4:
+                    size = struct.unpack('>I', data[pos-4:pos])[0]
+                    if 8 <= size <= 1000000:
+                        return offset + pos - 4
+                pos = data.find(MP4_MAGIC, pos + 1)
+            offset += len(data)
+    return None
+
+def extract_video(input_path, output_path):
+    offset = find_mp4_offset(input_path)
+    if offset is None:
+        return False
+    video_size = os.path.getsize(input_path) - offset
+    with open(input_path, 'rb') as fin:
+        fin.seek(offset)
+        video_data = fin.read(video_size)
+    with open(output_path, 'wb') as fout:
+        fout.write(video_data)
+    return True
+
+FOLDER = sys.argv[1]
+files = sorted(f for f in os.listdir(FOLDER)
+               if f.upper().startswith('MVIMG') and f.lower().endswith(('.jpg','.jpeg')))
+
+if not files:
+    print("EMPTY")
+    sys.exit(0)
+
+todo = []
+skipped = []
+for f in files:
+    base = os.path.splitext(f)[0]
+    if os.path.exists(os.path.join(FOLDER, f"{base}.mp4")):
+        skipped.append(f)
+    else:
+        todo.append(f)
+
+ok = fail = 0
+for filename in todo:
+    src = os.path.join(FOLDER, filename)
+    dst = os.path.join(FOLDER, os.path.splitext(filename)[0] + '.mp4')
+    if extract_video(src, dst):
+        ok += 1
+    else:
+        fail += 1
+
+print(f"OK:{ok}")
+print(f"FAIL:{fail}")
+print(f"SKIP:{len(skipped)}")
+print(f"FOLDER:{FOLDER}")
+PYEOF
+}
+
+# ─── Notification ───
+notify() {
+    osascript -e "display notification \"$1\" with title \"$APP_NAME\" subtitle \"$2\""
+}
+
+# ─── Folder picker dialog ───
+pick_folder() {
+    osascript -e "
+        tell application \"System Events\"
+            activate
+            set folderPath to choose folder with prompt \"$MSG_CHOOSE_FOLDER\"
+            return POSIX path of folderPath
+        end tell" 2>/dev/null
+}
+
+# ─── Result dialog ───
+show_result() {
+    local ok="$1"
+    local fail="$2"
+    local skip="$3"
+    local folder="$4"
+
+    osascript -e "
+        display dialog \"${MSG_SUCCESS}：${ok} ${MSG_SEGMENTS}
+${MSG_FAILED}${fail}
+${MSG_SKIPPED}${skip}
+
+${MSG_SAVED}
+${folder}\" with title \"$MSG_RESULT_TITLE\" buttons {\"$MSG_OPEN_FOLDER\", \"$MSG_CLOSE\"} default button 1" 2>/dev/null
+
+    if [ $? -eq 0 ]; then
+        open "$folder"
+    fi
+}
+
+show_error() {
+    osascript -e "display dialog \"$1\" with title \"$APP_NAME\" buttons {\"$MSG_OK\"} with icon stop" 2>/dev/null
+}
+
+# ─── Main ───
+FOLDER=""
+
+if [ $# -ge 1 ]; then
+    # Drag-and-drop mode: first argument is the dropped item
+    FOLDER="$1"
+    if [ -f "$FOLDER" ]; then
+        FOLDER=$(dirname "$FOLDER")
+    fi
+else
+    # Double-click mode: show folder picker
+    FOLDER=$(pick_folder)
+    if [ -z "$FOLDER" ]; then
+        exit 0
+    fi
+fi
+
+if [ ! -d "$FOLDER" ]; then
+    show_error "${MSG_ERROR}$FOLDER"
+    exit 1
+fi
+
+RESULT=$(run_extraction "$FOLDER" 2>&1)
+RC=$?
+
+if echo "$RESULT" | grep -q "EMPTY"; then
+    show_error "$MSG_NO_PHOTOS"
+    notify "$MSG_NOTIFY_NONE" "$FOLDER"
+    exit 0
+fi
+
+if [ $RC -ne 0 ]; then
+    show_error "$MSG_PROCESS_ERROR\n\n$RESULT"
+    exit 1
+fi
+
+# Parse results
+OK=$(echo "$RESULT" | grep "^OK:" | cut -d: -f2)
+FAIL=$(echo "$RESULT" | grep "^FAIL:" | cut -d: -f2)
+SKIP=$(echo "$RESULT" | grep "^SKIP:" | cut -d: -f2)
+FOLDER_NAME=$(echo "$RESULT" | grep "^FOLDER:" | cut -d: -f2)
+
+show_result "${OK:-0}" "${FAIL:-0}" "${SKIP:-0}" "$FOLDER_NAME"
+notify "${MSG_NOTIFY_DONE} ${OK:-0}${MSG_SKIP_SEG}${SKIP:-0}" "$FOLDER_NAME"
