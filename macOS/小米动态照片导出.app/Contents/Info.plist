@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>小米动态照片导出</string>
     <key>CFBundleIdentifier</key>
-    <string>com.mvimg.extractor</string>
+    <string>com.xiaomi.live-photo-convert</string>
     <key>CFBundleVersion</key>
     <string>0.1.0</string>
     <key>CFBundleShortVersionString</key>

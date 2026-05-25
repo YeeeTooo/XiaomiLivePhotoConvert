@@ -76,7 +76,7 @@ PYEOF
 
 # ─── 通知 ───
 notify() {
-    osascript -e "display notification \"$1\" with title \"MVIMG 提取器\" subtitle \"$2\""
+    osascript -e "display notification \"$1\" with title \"小米动态照片导出\" subtitle \"$2\""
 }
 
 # ─── 选择文件夹对话框 ───
@@ -102,7 +102,7 @@ show_result() {
 ⏭ 跳过（已有）：${skip}
 
 视频已保存在原文件夹：
-${folder}\" with title \"MVIMG 提取器 — 完成\" buttons {\"打开文件夹\", \"关闭\"} default button 1" 2>/dev/null
+${folder}\" with title \"小米动态照片导出 — 完成\" buttons {\"打开文件夹\", \"关闭\"} default button 1" 2>/dev/null
 
     if [ $? -eq 0 ]; then
         open "$folder"
@@ -110,7 +110,7 @@ ${folder}\" with title \"MVIMG 提取器 — 完成\" buttons {\"打开文件夹
 }
 
 show_error() {
-    osascript -e "display dialog \"$1\" with title \"MVIMG 提取器\" buttons {\"好\"} with icon stop" 2>/dev/null
+    osascript -e "display dialog \"$1\" with title \"小米动态照片导出\" buttons {\"好\"} with icon stop" 2>/dev/null
 }
 
 # ─── 主流程 ───

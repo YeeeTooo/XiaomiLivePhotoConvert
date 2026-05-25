@@ -8,7 +8,7 @@
 
 我不懂编程。只是自己用小米手机拍了很多动态照片，发现电脑上只能看到 `.jpg`，视频部分没法直接看。试了一圈也没找到好用的工具，就让 [WorkBuddy](https://www.codebuddy.cn) 帮我写了一个。
 
-**这个工具现在还是早期版本（v0.1.0），肯定还有 bug。** 如果你遇到问题，欢迎提 [Issue](https://github.com/YeeeTooo/mvimg-extractor/issues)，我会尽量修。
+**这个工具现在还是早期版本（v0.1.0），肯定还有 bug。** 如果你遇到问题，欢迎提 [Issue](https://github.com/YeeeTooo/XiaomiLivePhotoConvert/issues)，我会尽量修。
 
 ---
 
@@ -27,7 +27,7 @@ MVIMG_20250101.jpg  ──→  MVIMG_20250101.jpg（原图不动）
 
 > **目前只有 macOS 版**，Windows 版还在调试，敬请期待。
 
-👉 [**前往 Releases 下载**](https://github.com/YeeeTooo/mvimg-extractor/releases)
+👉 [**前往 Releases 下载**](https://github.com/YeeeTooo/XiaomiLivePhotoConvert/releases)
 
 ### macOS 使用方法
 
