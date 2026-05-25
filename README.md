@@ -1,86 +1,61 @@
-# MVIMG Extractor
+# 小米动态照片导出工具
 
-一键提取小米/红米手机动态照片（MVIMG）中的视频，**不转码、不压缩、逐字节无损**。
+> 一键把小米/红米手机拍的动态照片（MVIMG）拆成「照片 + 视频」两个文件。
 
-> 小米手机拍摄的动态照片本质是「JPG + MP4」的拼接文件，在电脑上只能看到 `.jpg`。本工具从 JPG 尾部无损切出 MP4 视频，质量与手机内置「保存为视频」完全一致。
+---
 
-## 特性
+## 我不是程序员
 
-- **无损提取** — 不重新编码，逐字节复制，MD5 完全一致
-- **批处理** — 一次处理整个文件夹，可反复运行（已提取的自动跳过）
-- **零依赖** — Windows 版依赖自带 PowerShell，macOS 版依赖自带 Python 3
-- **拖拽即用** — 不需要命令行
+我不懂编程。只是自己用小米手机拍了很多动态照片，发现电脑上只能看到 `.jpg`，视频部分没法直接看。试了一圈也没找到好用的工具，就让 [WorkBuddy](https://www.codebuddy.cn) 帮我写了一个。
 
-## 快速开始
+**这个工具现在还是早期版本（v0.1.0），肯定还有 bug。** 如果你遇到问题，欢迎提 [Issue](https://github.com/YeeeTooo/mvimg-extractor/issues)，我会尽量修。
 
-👉 **[前往 Releases 下载](https://github.com/YeeeTooo/mvimg-extractor/releases)**
+---
 
-### Windows
-
-1. 下载 `MVIMG_提取器_Windows.bat`
-2. **双击运行** → 选择照片文件夹 → 等待完成
-3. 提取的 `.mp4` 文件在原图旁边
-
-> Windows 10/11 自带 PowerShell，无需安装任何东西。
-
-### macOS
-
-1. 下载 `MVIMG_Extractor_macOS.zip`，解压
-2. **双击 `MVIMG Extractor.app`** → 选择照片文件夹 → 等待完成弹窗
-3. 点击「打开文件夹」直接查看视频
-
-> 所有 Mac 自带 Python 3（`/usr/bin/python3`），无需安装任何东西。
-
-### 命令行（跨平台）
-
-```bash
-python3 mvimg-extract.py /path/to/photos/
-```
-
-- `python3 mvimg-extract.py` — 处理当前目录
-- `python3 mvimg-extract.py ~/Desktop/photos` — 处理指定目录
-- `python3 mvimg-extract.py --status` — 只看不处理
-
-## 原理
+## 它做了什么
 
 ```
-MVIMG_20250101_120000.jpg
-┌──────────────────────────────┐
-│  JPEG 图片数据  │  MP4 视频   │
-│  (静态预览)    │  (H.264+AAC)│
-└──────────────────────────────┘
-                      ↓
-               按字节切分，原样复制
-                      ↓
-              MVIMG_20250101_120000.mp4
+MVIMG_20250101.jpg  ──→  MVIMG_20250101.jpg（原图不动）
+                    ──→  MVIMG_20250101.mp4（提取的视频）
 ```
 
-脚本扫描 MP4 特征标记 `ftyp`，定位视频数据的准确起始偏移，然后逐字节复制出来。
+不转码、不压缩，就是从 JPG 文件尾部把 MP4 数据原样切出来。视频质量和你手机拍出来一模一样。
 
-## 视频参数
+---
 
-提取的视频保留手机原始录制参数：
+## 下载使用
 
-| 属性 | 典型值 |
-|------|--------|
-| 编码 | H.264 + AAC |
-| 分辨率 | 1080×1440（竖屏） |
-| 帧率 | ~30fps |
-| 时长 | 约 2~3 秒 |
+> **目前只有 macOS 版**，Windows 版还在调试，敬请期待。
 
-## 文件结构
+👉 [**前往 Releases 下载**](https://github.com/YeeeTooo/mvimg-extractor/releases)
 
-```
-mvimg-extractor/
-├── README.md
-├── mvimg-extract.py          # 命令行通用版
-├── Windows/
-│   ├── MVIMG_提取器.bat       # 主力：双击即用
-│   └── mvimg-extract.py      # 备用
-└── macOS/
-    └── MVIMG Extractor.app   # 主力：双击即用
-```
+### macOS 使用方法
 
-## License
+1. 下载 `小米动态照片导出_macOS.zip`，解压
+2. 双击 App → 选择装了 MVIMG 照片的文件夹 → 等待完成
+3. 每个动态照片旁边都会生成同名 `.mp4` 视频文件
 
-MIT
+> 所有 Mac 自带 Python 3，零依赖，绿色免安装。
+
+---
+
+## 原理说明
+
+小米 MVIMG 文件本质是 JPG 图片后面拼接了一段 MP4 视频数据。工具扫描 MP4 特征标记（`ftyp`），找到视频起始位置，逐字节复制出来。全程没有重新编码，所以无损。
+
+提取的视频参数保留手机原始规格：H.264 编码、1080×1440 分辨率、约 30fps，时长 2~3 秒。
+
+---
+
+## 已知问题
+
+- Windows 版功能不完善，暂未发布
+- 仅测试了小米 17 Ultra，其他机型未验证
+- 如果 MVIMG 文件被某些软件处理过（压缩/编辑），可能无法识别视频数据
+
+---
+
+## 感谢
+
+- 由 [WorkBuddy](https://www.codebuddy.cn) 辅助编写
+- MIT 开源，随便用

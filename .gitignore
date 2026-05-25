@@ -7,6 +7,6 @@ __MACOSX/
 __pycache__/
 *.pyc
 
-# Test data
-test_photos/
-*.mp4.backup
+# Build artifacts (go in Releases, not repo)
+*.zip
+*.bat.bak
