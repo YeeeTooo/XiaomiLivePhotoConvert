@@ -13,9 +13,11 @@
 
 ## 快速开始
 
+👉 **[前往 Releases 下载](https://github.com/YeeeTooo/mvimg-extractor/releases)**
+
 ### Windows
 
-1. 下载 `Windows/MVIMG_提取器.bat`
+1. 下载 `MVIMG_提取器_Windows.bat`
 2. **双击运行** → 选择照片文件夹 → 等待完成
 3. 提取的 `.mp4` 文件在原图旁边
 
@@ -23,8 +25,8 @@
 
 ### macOS
 
-1. 下载 `macOS/MVIMG Extractor.app`
-2. **双击运行** → 选择照片文件夹 → 等待完成弹窗
+1. 下载 `MVIMG_Extractor_macOS.zip`，解压
+2. **双击 `MVIMG Extractor.app`** → 选择照片文件夹 → 等待完成弹窗
 3. 点击「打开文件夹」直接查看视频
 
 > 所有 Mac 自带 Python 3（`/usr/bin/python3`），无需安装任何东西。
