@@ -1,6 +1,6 @@
 #!/bin/bash
 # Xiaomi Live Photo Converter — macOS App entry point
-# Drag a folder onto the app icon, or double-click to pick a folder.
+# Drag files OR folders onto the app icon, or double-click to pick a folder.
 # Auto-detects system language for UI (Chinese / English).
 
 # ─── Language detection ───
@@ -8,16 +8,20 @@ LANG_CODE=$(defaults read -g AppleLocale 2>/dev/null | cut -d_ -f1)
 if [ "$LANG_CODE" = "zh" ]; then
     APP_NAME="小米动态照片导出"
     MSG_CHOOSE_FOLDER="选择包含 MVIMG 动态照片的文件夹："
+    MSG_CHOOSE_FILES="选择 MVIMG 动态照片文件："
     MSG_NO_PHOTOS="该文件夹中没有找到 MVIMG 开头的动态照片。\n\n提示：小米动态照片文件名以 MVIMG 开头。"
-    MSG_ERROR="无法访问文件夹："
+    MSG_NO_VALID_FILES="选中的文件中没有 MVIMG 动态照片。"
+    MSG_ERROR="无法访问："
     MSG_PROCESS_ERROR="处理出错，请检查文件夹权限。"
     MSG_NOTIFY_NONE="没有找到动态照片"
     MSG_RESULT_TITLE="小米动态照片导出 — 完成"
     MSG_SUCCESS="✅ 成功提取"
     MSG_FAILED="❌ 失败："
     MSG_SKIPPED="⏭ 跳过（已有）："
-    MSG_SAVED="视频已保存在原文件夹："
+    MSG_IGNORED="⚠️ 已忽略非 MVIMG 文件："
+    MSG_SAVED="视频已保存在原位置"
     MSG_SEGMENTS="段视频"
+    MSG_FILES="个文件"
     MSG_OPEN_FOLDER="打开文件夹"
     MSG_CLOSE="关闭"
     MSG_OK="好"
@@ -26,16 +30,20 @@ if [ "$LANG_CODE" = "zh" ]; then
 else
     APP_NAME="Xiaomi Live Photo Converter"
     MSG_CHOOSE_FOLDER="Select the folder containing MVIMG dynamic photos:"
+    MSG_CHOOSE_FILES="Select MVIMG dynamic photo files:"
     MSG_NO_PHOTOS="No MVIMG dynamic photos found in this folder.\n\nHint: Xiaomi dynamic photo filenames start with MVIMG."
-    MSG_ERROR="Cannot access folder: "
+    MSG_NO_VALID_FILES="No MVIMG files in selection."
+    MSG_ERROR="Cannot access: "
     MSG_PROCESS_ERROR="Processing error. Please check folder permissions."
     MSG_NOTIFY_NONE="No dynamic photos found"
     MSG_RESULT_TITLE="Xiaomi Live Photo Converter — Done"
     MSG_SUCCESS="✅ Extracted"
     MSG_FAILED="❌ Failed: "
     MSG_SKIPPED="⏭ Skipped (already exists): "
-    MSG_SAVED="Videos saved in original folder:"
+    MSG_IGNORED="⚠️ Ignored non-MVIMG files: "
+    MSG_SAVED="Videos saved in original location"
     MSG_SEGMENTS="video(s)"
+    MSG_FILES="file(s)"
     MSG_OPEN_FOLDER="Open Folder"
     MSG_CLOSE="Close"
     MSG_OK="OK"
@@ -43,7 +51,7 @@ else
     MSG_SKIP_SEG=", skipped "
 fi
 
-# ─── Embedded extraction script ───
+# ─── Embedded extraction script — FOLDER mode ───
 run_extraction() {
     local FOLDER="$1"
     /usr/bin/python3 - "$FOLDER" << 'PYEOF'
@@ -110,6 +118,96 @@ print(f"OK:{ok}")
 print(f"FAIL:{fail}")
 print(f"SKIP:{len(skipped)}")
 print(f"FOLDER:{FOLDER}")
+print("MODE:folder")
+PYEOF
+}
+
+# ─── Embedded extraction script — FILE mode ───
+run_file_extraction() {
+    # Pass file paths as arguments after --
+    /usr/bin/python3 - "$@" << 'PYEOF'
+import sys, os, struct
+
+MP4_MAGIC = b'ftyp'
+
+def find_mp4_offset(filepath):
+    with open(filepath, 'rb') as f:
+        offset = 0
+        while True:
+            data = f.read(65536)
+            if not data:
+                break
+            pos = data.find(MP4_MAGIC)
+            while pos != -1:
+                if pos >= 4:
+                    size = struct.unpack('>I', data[pos-4:pos])[0]
+                    if 8 <= size <= 1000000:
+                        return offset + pos - 4
+                pos = data.find(MP4_MAGIC, pos + 1)
+            offset += len(data)
+    return None
+
+def extract_video(input_path, output_path):
+    offset = find_mp4_offset(input_path)
+    if offset is None:
+        return False
+    video_size = os.path.getsize(input_path) - offset
+    with open(input_path, 'rb') as fin:
+        fin.seek(offset)
+        video_data = fin.read(video_size)
+    with open(output_path, 'wb') as fout:
+        fout.write(video_data)
+    return True
+
+# Validate and filter MVIMG files
+raw_files = sys.argv[1:]
+valid = []
+ignored = 0
+for fpath in raw_files:
+    name = os.path.basename(fpath)
+    if name.upper().startswith('MVIMG') and name.lower().endswith(('.jpg', '.jpeg')) and os.path.isfile(fpath):
+        valid.append(fpath)
+    else:
+        ignored += 1
+
+if ignored > 0:
+    print(f"IGNORED:{ignored}")
+
+if not valid:
+    print("EMPTY")
+    sys.exit(0)
+
+# Group by output directory
+from collections import defaultdict
+groups = defaultdict(list)
+for f in valid:
+    groups[os.path.dirname(os.path.abspath(f))].append(f)
+
+total_ok = total_fail = total_skip = 0
+for folder, file_list in sorted(groups.items()):
+    todo = []
+    skipped = []
+    for f in file_list:
+        base = os.path.splitext(os.path.basename(f))[0]
+        mp4_path = os.path.join(folder, f"{base}.mp4")
+        if os.path.exists(mp4_path):
+            skipped.append(f)
+        else:
+            todo.append((f, mp4_path))
+
+    total_skip += len(skipped)
+
+    for src, dst in todo:
+        if extract_video(src, dst):
+            total_ok += 1
+        else:
+            total_fail += 1
+
+print(f"OK:{total_ok}")
+print(f"FAIL:{total_fail}")
+print(f"SKIP:{total_skip}")
+print(f"FILES:{len(valid)}")
+print("MODE:file")
 PYEOF
 }
 
@@ -128,8 +226,22 @@ pick_folder() {
         end tell" 2>/dev/null
 }
 
-# ─── Result dialog ───
-show_result() {
+# ─── File picker dialog ───
+pick_files() {
+    osascript -e "
+        tell application \"System Events\"
+            activate
+            set fileList to choose file with prompt \"$MSG_CHOOSE_FILES\" of type {\"public.image\", \"jpeg\", \"jpg\"} with multiple selections allowed
+            set resultList to {}
+            repeat with f in fileList
+                copy POSIX path of f to end of resultList
+            end repeat
+            return resultList
+        end tell" 2>/dev/null
+}
+
+# ─── Result dialog — folder mode ───
+show_result_folder() {
     local ok="$1"
     local fail="$2"
     local skip="$3"
@@ -148,38 +260,161 @@ ${folder}\" with title \"$MSG_RESULT_TITLE\" buttons {\"$MSG_OPEN_FOLDER\", \"$M
     fi
 }
 
+# ─── Result dialog — file mode ───
+show_result_files() {
+    local ok="$1"
+    local fail="$2"
+    local skip="$3"
+    local file_count="$4"
+
+    osascript -e "
+        display dialog \"${MSG_SUCCESS}：${ok} ${MSG_SEGMENTS}
+${MSG_FAILED}${fail}
+${MSG_SKIPPED}${skip}
+
+${MSG_SAVED}\"
+         with title \"$MSG_RESULT_TITLE\" buttons {\"$MSG_CLOSE\"} default button 1" 2>/dev/null
+}
+
 show_error() {
     osascript -e "display dialog \"$1\" with title \"$APP_NAME\" buttons {\"$MSG_OK\"} with icon stop" 2>/dev/null
 }
 
-# ─── Main ───
-FOLDER=""
+# ══════════════════════════════════
+#  Main — dual mode: FILE vs FOLDER
+# ══════════════════════════════════
+
+MODE=""
+INPUTS=()
 
 if [ $# -ge 1 ]; then
-    # Drag-and-drop mode: first argument is the dropped item
-    FOLDER="$1"
-    if [ -f "$FOLDER" ]; then
-        FOLDER=$(dirname "$FOLDER")
+    # Drag-and-drop mode: inspect dropped items
+    HAS_FILE=0
+    HAS_FOLDER=0
+
+    for arg in "$@"; do
+        if [ -f "$arg" ]; then
+            HAS_FILE=1
+            INPUTS+=("$arg")
+        elif [ -d "$arg" ]; then
+            HAS_FOLDER=1
+            INPUTS+=("$arg")
+        fi
+    done
+
+    # Determine primary mode based on what was dropped
+    if [ $HAS_FILE -eq 1 ] && [ $HAS_FOLDER -eq 0 ]; then
+        MODE="file"
+    elif [ $HAS_FOLDER -eq 1 ]; then
+        MODE="folder"
+    elif [ $HAS_FILE -eq 1 ] && [ $HAS_FOLDER -eq 1 ]; then
+        # Mixed: prioritize folder mode for folders, process files too
+        MODE="mixed"
     fi
-else
-    # Double-click mode: show folder picker
-    FOLDER=$(pick_folder)
-    if [ -z "$FOLDER" ]; then
+fi
+
+if [ -z "$MODE" ]; then
+    # Double-click mode: show picker
+    CHOICE=$(osascript -e "
+        tell application \"System Events\"
+            activate
+            set userChoice to display dialog \"请选择操作：\"
+                with title \"$APP_NAME\"
+                buttons {\"选择文件夹\", \"选择文件\", \"取消\"}
+                default button 1
+            return button returned of userChoice
+        end tell" 2>/dev/null)
+
+    case "$CHOICE" in
+        "选择文件夹"|"Select Folder")
+            FOLDER=$(pick_folder)
+            if [ -n "$FOLDER" ]; then
+                MODE="folder"
+                INPUTS=("$FOLDER")
+            else
+                exit 0
+            fi
+            ;;
+        "选择文件"|"Select Files")
+            FILES=$(pick_files)
+            if [ -n "$FILES" ]; then
+                MODE="file"
+                # Convert newlines to array
+                while IFS= read -r f; do
+                    INPUTS+=("$f")
+                done <<< "$FILES"
+            else
+                exit 0
+            fi
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+fi
+
+# ═══ Execute ═══
+
+case "$MODE" in
+    "file")
+        RESULT=$(run_file_extraction "${INPUTS[@]}" 2>&1)
+        RC=$?
+        ;;
+
+    "folder")
+        FOLDER="${INPUTS[0]}"
+        if [ ! -d "$FOLDER" ]; then
+            show_error "${MSG_ERROR}$FOLDER"
+            exit 1
+        fi
+        RESULT=$(run_extraction "$FOLDER" 2>&1)
+        RC=$?
+        ;;
+
+    "mixed")
+        # Process all folders first, then files
+        ALL_OK=0; ALL_FAIL=0; ALL_SKIP=0; FIRST_FOLDER=""
+        for item in "${INPUTS[@]}"; do
+            if [ -d "$item" ]; then
+                SUB_RESULT=$(run_extraction "$item" 2>&1)
+                OK=$(echo "$SUB_RESULT" | grep "^OK:" | cut -d: -f2)
+                FAIL=$(echo "$SUB_RESULT" | grep "^FAIL:" | cut -d: -f2)
+                SKIP=$(echo "$SUB_RESULT" | grep "^SKIP:" | cut -d: -f2)
+                ALL_OK=$((ALL_OK + ${OK:-0}))
+                ALL_FAIL=$((ALL_FAIL + ${FAIL:-0}))
+                ALL_SKIP=$((ALL_SKIP + ${SKIP:-0}))
+                if [ -z "$FIRST_FOLDER" ]; then
+                    FIRST_FOLDER=$(echo "$SUB_RESULT" | grep "^FOLDER:" | cut -d: -f2-)
+                fi
+            fi
+        done
+        # Collect file inputs
+        FILE_INPUTS=()
+        for item in "${INPUTS[@]}"; do
+            [ -f "$item" ] && FILE_INPUTS+=("$item")
+        done
+        if [ ${#FILE_INPUTS[@]} -gt 0 ]; then
+            FILE_RESULT=$(run_file_extraction "${FILE_INPUTS[@]}" 2>&1)
+            FOK=$(echo "$FILE_RESULT" | grep "^OK:" | cut -d: -f2)
+            FFAIL=$(echo "$FILE_RESULT" | grep "^FAIL:" | cut -d: -f2)
+            FSKIP=$(echo "$FILE_RESULT" | grep "^SKIP:" | cut -d: -f2)
+            ALL_OK=$((ALL_OK + ${FOK:-0}))
+            ALL_FAIL=$((ALL_FAIL + ${FFAIL:-0}))
+            ALL_SKIP=$((ALL_SKIP + ${FSkip:-0}))
+        fi
+        show_result_folder "$ALL_OK" "$ALL_FAIL" "$ALL_SKIP" "${FIRST_FOLDER:-}"
         exit 0
-    fi
-fi
+        ;;
+esac
 
-if [ ! -d "$FOLDER" ]; then
-    show_error "${MSG_ERROR}$FOLDER"
-    exit 1
-fi
-
-RESULT=$(run_extraction "$FOLDER" 2>&1)
-RC=$?
-
+# Parse results for file/folder modes
 if echo "$RESULT" | grep -q "EMPTY"; then
-    show_error "$MSG_NO_PHOTOS"
-    notify "$MSG_NOTIFY_NONE" "$FOLDER"
+    if [ "$MODE" = "file" ]; then
+        show_error "$MSG_NO_VALID_FILES"
+    else
+        show_error "$MSG_NO_PHOTOS"
+    fi
+    notify "$MSG_NOTIFY_NONE" "$MODE"
     exit 0
 fi
 
@@ -188,11 +423,23 @@ if [ $RC -ne 0 ]; then
     exit 1
 fi
 
-# Parse results
 OK=$(echo "$RESULT" | grep "^OK:" | cut -d: -f2)
 FAIL=$(echo "$RESULT" | grep "^FAIL:" | cut -d: -f2)
 SKIP=$(echo "$RESULT" | grep "^SKIP:" | cut -d: -f2)
-FOLDER_NAME=$(echo "$RESULT" | grep "^FOLDER:" | cut -d: -f2)
 
-show_result "${OK:-0}" "${FAIL:-0}" "${SKIP:-0}" "$FOLDER_NAME"
-notify "${MSG_NOTIFY_DONE} ${OK:-0}${MSG_SKIP_SEG}${SKIP:-0}" "$FOLDER_NAME"
+IGNORED=$(echo "$RESULT" | grep "^IGNORED:" | cut -d: -f2)
+if [ -n "$IGNORED" ] && [ "$IGNORED" -gt 0 ]; then
+    echo "⚠️  ${MSG_IGNORED}${IGNORED}"
+fi
+
+# Show appropriate result dialog
+CURRENT_MODE=$(echo "$RESULT" | grep "^MODE:" | cut -d: -f2)
+if [ "$CURRENT_MODE" = "file" ]; then
+    FILE_COUNT=$(echo "$RESULT" | grep "^FILES:" | cut -d: -f2)
+    show_result_files "${OK:-0}" "${FAIL:-0}" "${SKIP:-0}" "${FILE_COUNT:-0}"
+else
+    FOLDER_NAME=$(echo "$RESULT" | grep "^FOLDER:" | cut -d: -f2-)
+    show_result_folder "${OK:-0}" "${FAIL:-0}" "${SKIP:-0}" "$FOLDER_NAME"
+fi
+
+notify "${MSG_NOTIFY_DONE} ${OK:-0}${MSG_SKIP_SEG}${SKIP:-0}" "${MODE}"

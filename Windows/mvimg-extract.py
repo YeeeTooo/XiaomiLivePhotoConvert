@@ -12,9 +12,9 @@ MVIMG 动态照片提取器 — 通用 Python 版 (跨平台)
 原图不动，可反复运行（已有 mp4 的自动跳过）。
 """
 
-import sys, os, struct, hashlib
+import sys, os, struct
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 MP4_MAGIC = b'ftyp'
 
 
@@ -72,13 +72,67 @@ def show_help():
     print(f"""MVIMG 动态照片提取器 v{VERSION}
 ═══════════════════════════════
 用法:
-  python3 mvimg-extract.py <文件夹路径>
-  python3 mvimg-extract.py .                处理当前目录
-  python3 mvimg-extract.py ~/Desktop/photos 处理指定文件夹
+  python3 mvimg-extract.py <文件夹路径>     处理文件夹中所有 MVIMG
+  python3 mvimg-extract.py <文件路径>...     处理指定的 MVIMG 文件
+  python3 mvimg-extract.py .                 处理当前目录
   python3 mvimg-extract.py --help           帮助
 
 适用: Windows / macOS / Linux，Python 3.6+
+支持拖拽文件夹或文件到脚本/应用图标上
 """)
+
+
+def is_mvimg_file(filepath):
+    """检查文件是否是 MVIMG 动态照片"""
+    name = os.path.basename(filepath)
+    return name.upper().startswith('MVIMG') and name.lower().endswith(('.jpg', '.jpeg'))
+
+
+def process_files(file_list):
+    """处理指定的 MVIMG 文件列表（支持拖拽文件模式）"""
+    valid = [f for f in file_list if os.path.isfile(f) and is_mvimg_file(f)]
+    invalid = [f for f in file_list if not (os.path.isfile(f) and is_mvimg_file(f))]
+
+    if invalid:
+        print(f"⚠️  已忽略 {len(invalid)} 个非 MVIMG 文件")
+
+    if not valid:
+        print("📭 没有可处理的 MVIMG 文件")
+        return
+
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for f in valid:
+        groups[os.path.dirname(os.path.abspath(f))].append(f)
+
+    total_ok, total_fail, total_skip = 0, 0, 0
+    for folder, files in sorted(groups.items()):
+        todo, skipped = [], []
+        for f in files:
+            base = os.path.splitext(os.path.basename(f))[0]
+            mp4_path = os.path.join(folder, f"{base}.mp4")
+            if os.path.exists(mp4_path):
+                skipped.append(f)
+            else:
+                todo.append((f, mp4_path))
+
+        if skipped:
+            print(f"⏭️  跳过 {len(skipped)} 张（已有 mp4）")
+
+        if todo:
+            print(f"📸 处理 {len(todo)} 张...\n")
+            for src, dst in todo:
+                success, size = extract_video(src, dst)
+                if success:
+                    print(f"  ✅ {os.path.basename(src)} → {os.path.basename(dst)} ({size/1024/1024:.1f} MB)")
+                    total_ok += 1
+                else:
+                    print(f"  ❌ {os.path.basename(src)} → 未找到嵌入视频")
+                    total_fail += 1
+
+        total_skip += len(skipped)
+
+    print(f"\n🎉 完成：成功 {total_ok}，失败 {total_fail}，跳过 {total_skip}")
 
 
 def process_folder(folder):
@@ -126,16 +180,23 @@ def main():
         show_help()
         sys.exit(0)
 
-    folder = os.path.abspath(os.path.expanduser(sys.argv[1]))
-    if not os.path.isdir(folder):
-        # 可能是拖拽了文件进来
-        if os.path.isfile(sys.argv[1]):
-            folder = os.path.dirname(os.path.abspath(sys.argv[1]))
-        else:
-            print(f"❌ 路径无效: {folder}")
-            sys.exit(1)
+    args = [os.path.abspath(os.path.expanduser(a)) for a in sys.argv[1:]]
 
-    process_folder(folder)
+    folders = [a for a in args if os.path.isdir(a)]
+    files = [a for a in args if os.path.isfile(a)]
+
+    if files and not folders:
+        process_files(files)
+    elif folders:
+        if files:
+            print(f"📁 检测到 {len(folders)} 个文件夹 + {len(files)} 个文件，分别处理\n")
+            process_files(files)
+            print()
+        for folder in folders:
+            process_folder(folder)
+    else:
+        print(f"❌ 路径无效: {args}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':
