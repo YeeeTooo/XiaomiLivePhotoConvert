@@ -5,7 +5,7 @@ MVIMG 动态照片提取器 — 通用 Python 版 (跨平台)
 适用：Windows / macOS / Linux，需要 Python 3.6+
 
 使用方法：
-    python3 mvimg-extract.py <照片文件夹路径>
+    python3 main.py <照片文件夹路径>
     或直接双击运行，把文件夹拖到脚本上
 
 输出：在原文件夹中为每张 MVIMG 动态照片生成同名的 .mp4 视频文件
@@ -72,10 +72,10 @@ def show_help():
     print(f"""MVIMG 动态照片提取器 v{VERSION}
 ═══════════════════════════════
 用法:
-  python3 mvimg-extract.py <文件夹路径>     处理文件夹中所有 MVIMG
-  python3 mvimg-extract.py <文件路径>...     处理指定的 MVIMG 文件
-  python3 mvimg-extract.py .                 处理当前目录
-  python3 mvimg-extract.py --help           帮助
+  python3 main.py <文件夹路径>     处理文件夹中所有 MVIMG
+  python3 main.py <文件路径>...     处理指定的 MVIMG 文件
+  python3 main.py .                 处理当前目录
+  python3 main.py --help           帮助
 
 适用: Windows / macOS / Linux，Python 3.6+
 支持拖拽文件夹或文件到脚本/应用图标上

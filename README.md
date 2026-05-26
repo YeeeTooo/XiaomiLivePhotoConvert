@@ -8,7 +8,7 @@
 
 我不懂编程。只是自己用小米手机拍了很多动态照片，发现电脑上只能看到 `.jpg`，视频部分没法直接看。试了一圈也没找到好用的工具，就让 [WorkBuddy](https://www.codebuddy.cn) 帮我写了一个。
 
-**这个工具现在还是早期版本（v0.1.0），肯定还有 bug。** 如果你遇到问题，欢迎提 [Issue](https://github.com/YeeeTooo/XiaomiLivePhotoConvert/issues)，我会尽量修。
+**这个工具目前是 v1.1.0，支持拖拽文件夹或单个文件。** 如果你遇到问题，欢迎提 [Issue](https://github.com/YeeeTooo/XiaomiLivePhotoConvert/issues)，我会尽量修。
 
 ---
 
