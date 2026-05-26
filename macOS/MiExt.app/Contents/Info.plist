@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Xiaomi Live Photo Converter</string>
+    <string>MiExt</string>
     <key>CFBundleDisplayName</key>
-    <string>Xiaomi Live Photo Converter</string>
+    <string>MiExt</string>
     <key>CFBundleIdentifier</key>
-    <string>com.xiaomi.live-photo-convert</string>
+    <string>com.miext.app</string>
     <key>CFBundleVersion</key>
-    <string>1.1.0</string>
+    <string>1.2.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>1.2.0</string>
     <key>CFBundleExecutable</key>
-    <string>mvimg-extractor</string>
+    <string>mi-ext</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleIconFile</key>

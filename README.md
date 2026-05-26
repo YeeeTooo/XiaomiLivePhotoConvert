@@ -1,6 +1,8 @@
-# 小米动态照片导出工具
+# MiExt
 
 > 一键把小米/红米手机拍的动态照片（MVIMG）拆成「照片 + 视频」两个文件。
+
+**v1.2.0** — 修复 macOS 中文系统闪退，重命名为 MiExt，新增终端入口
 
 ---
 
@@ -8,7 +10,7 @@
 
 我不懂编程。只是自己用小米手机拍了很多动态照片，发现电脑上只能看到 `.jpg`，视频部分没法直接看。试了一圈也没找到好用的工具，就让 [WorkBuddy](https://www.codebuddy.cn) 帮我写了一个。
 
-**这个工具目前是 v1.1.0，支持拖拽文件夹或单个文件。** 如果你遇到问题，欢迎提 [Issue](https://github.com/YeeeTooo/XiaomiLivePhotoConvert/issues)，我会尽量修。
+**如果你遇到问题，欢迎提 [Issue](https://github.com/YeeeTooo/XiaomiLivePhotoConvert/issues)，我会尽量修。**
 
 ---
 
@@ -16,7 +18,7 @@
 
 ```
 MVIMG_20250101.jpg  ──→  MVIMG_20250101.jpg（原图不动）
-                    ──→  MVIMG_20250101.mp4（提取的视频）
+                   ──→  MVIMG_20250101.mp4（提取的视频）
 ```
 
 不转码、不压缩，就是从 JPG 文件尾部把 MP4 数据原样切出来。视频质量和你手机拍出来一模一样。
@@ -25,15 +27,17 @@ MVIMG_20250101.jpg  ──→  MVIMG_20250101.jpg（原图不动）
 
 ## 下载使用
 
-> **目前只有 macOS 版**，Windows 版还在调试，敬请期待。
+> **目前只有 macOS 版**
 
 👉 [**前往 Releases 下载**](https://github.com/YeeeTooo/XiaomiLivePhotoConvert/releases)
 
 ### macOS 使用方法
 
-1. 下载 `XiaomiLivePhotoConvert_macOS.dmg`，双击打开
-2. 把 `XiaomiLivePhotoConvert` 拖到 `Applications` 文件夹（和普通 Mac 软件一样）
+1. 下载 `MiExt_macOS.dmg`，双击打开
+2. 把 `MiExt` 拖到 `Applications` 文件夹（和普通 Mac 软件一样）
 3. 从启动台打开 App → 选择装了 MVIMG 照片的文件夹 → 完成
+
+> 或者直接双击 `MiExt.command`（不需要安装，免拖拽）
 
 > 所有 Mac 自带 Python 3，零依赖，绿色免安装。
 
@@ -49,9 +53,19 @@ MVIMG_20250101.jpg  ──→  MVIMG_20250101.jpg（原图不动）
 
 ## 已知问题
 
-- Windows 版功能不完善，暂未发布
 - 仅测试了小米 17 Ultra，其他机型未验证
 - 如果 MVIMG 文件被某些软件处理过（压缩/编辑），可能无法识别视频数据
+
+---
+
+## 版本历史
+
+| 版本 | 变更 |
+|------|------|
+| **v1.2.0** | 重命名 → MiExt；修复 macOS 中文系统闪退；新增 command 终端入口 |
+| v1.1.0 | 支持拖拽单个文件（不仅限文件夹） |
+| v1.0.0 | 统一版本号 |
+| v0.1.0 | 初始版本 |
 
 ---
 
