@@ -14,7 +14,7 @@ MVIMG 动态照片提取器 — 通用 Python 版 (跨平台)
 
 import sys, os, struct
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 MP4_MAGIC = b'ftyp'
 
 

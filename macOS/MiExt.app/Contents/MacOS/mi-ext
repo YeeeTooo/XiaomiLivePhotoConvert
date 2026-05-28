@@ -1,9 +1,20 @@
 #!/bin/bash
 # MiExt — macOS App Entry Point
-# Drag files/folders onto app, or double-click to pick.
+# Drag files/folders onto app, or double-click to launch GUI.
 # Auto-detects system language for UI (Chinese / English).
 # NOTE: No 'set -e' — osascript dialogs return non-zero on user cancel,
 #       which should be handled gracefully, not kill the script.
+
+# ─── Python interpreter (managed 3.13.12 with Tk 9.0.3) ───
+# System /usr/bin/python3 uses Tk 8.5.9 which has severe rendering bugs
+# on macOS. Use managed Python which ships with modern Tk.
+PYTHON3="/Users/tuyi/.workbuddy/binaries/python/versions/3.13.12/bin/python3"
+# Fallback to system Python if managed version unavailable
+[ -x "$PYTHON3" ] || PYTHON3="/usr/bin/python3"
+
+# ─── Resolve paths ───
+APP_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+GUI_SCRIPT="$APP_ROOT/Resources/gui.py"
 
 # ─── Debug log ───
 DEBUG_LOG="/tmp/miext-debug-$$.log"
@@ -11,51 +22,60 @@ log_debug() { echo "[$(date '+%H:%M:%S')] $*" >> "$DEBUG_LOG"; }
 log_debug "=== MiExt started ==="
 log_debug "PID: $$"
 log_debug "Args: $*"
+log_debug "APP_ROOT: $APP_ROOT"
+log_debug "GUI_SCRIPT: $GUI_SCRIPT"
+
+# ══════════════════════════════════
+#  Mode 1: Double-click (no args) → Launch GUI
+# ══════════════════════════════════
+if [ $# -eq 0 ]; then
+    log_debug "No args — launching GUI mode"
+    if [ -f "$GUI_SCRIPT" ]; then
+        log_debug "Starting gui.py via python3"
+        exec "$PYTHON3" "$GUI_SCRIPT" 2>>"$DEBUG_LOG"
+    else
+        log_debug "ERROR: gui.py not found at $GUI_SCRIPT"
+        osascript -e 'display dialog "无法找到图形界面文件。\n\n请重新安装 MiExt。" with title "MiExt" buttons {"好"} default button 1' >/dev/null 2>&1
+        exit 1
+    fi
+fi
+
+# ══════════════════════════════════
+#  Mode 2: Drag-and-drop (with args) → Direct processing
+# ══════════════════════════════════
 
 # ─── Language detection ───
 LANG_CODE=$(defaults read -g AppleLocale 2>/dev/null | cut -d_ -f1)
 if [ "$LANG_CODE" = "zh" ]; then
     APP_NAME="MiExt"
-    MSG_CHOOSE_FOLDER="选择包含 MVIMG 动态照片的文件夹："
-    MSG_CHOOSE_FILES="选择 MVIMG 动态照片文件："
     MSG_NO_PHOTOS="该文件夹中没有找到 MVIMG 开头的动态照片。\n\n提示：小米动态照片文件名以 MVIMG 开头。"
     MSG_NO_VALID_FILES="选中的文件中没有 MVIMG 动态照片。"
     MSG_ERROR="无法访问："
     MSG_PROCESS_ERROR="处理出错，请检查文件夹权限。"
     MSG_RESULT_TITLE="MiExt — 完成"
-    MSG_SUCCESS="? 成功提取"
-    MSG_FAILED="? 失败："
-    MSG_SKIPPED="? 跳过（已有）："
+    MSG_SUCCESS="✅ 成功提取"
+    MSG_FAILED="❌ 失败："
+    MSG_SKIPPED="⏭️ 跳过（已有）："
     MSG_SAVED="视频已保存在原位置"
     MSG_SEGMENTS="段视频"
     MSG_OPEN_FOLDER="打开文件夹"
     MSG_CLOSE="关闭"
     MSG_OK="好"
-    MSG_SELECT_FOLDER="选择文件夹"
-    MSG_SELECT_FILES="选择文件"
-    MSG_CANCEL="取消"
-    MSG_CHOOSE="请选择操作："
 else
     APP_NAME="MiExt"
-    MSG_CHOOSE_FOLDER="Select the folder containing MVIMG dynamic photos:"
-    MSG_CHOOSE_FILES="Select MVIMG dynamic photo files:"
     MSG_NO_PHOTOS="No MVIMG dynamic photos found in this folder.\n\nHint: Xiaomi dynamic photo filenames start with MVIMG."
     MSG_NO_VALID_FILES="No MVIMG files in selection."
     MSG_ERROR="Cannot access: "
     MSG_PROCESS_ERROR="Processing error. Please check folder permissions."
     MSG_RESULT_TITLE="MiExt — Done"
-    MSG_SUCCESS="? Extracted"
-    MSG_FAILED="? Failed: "
-    MSG_SKIPPED="? Skipped (already exists): "
+    MSG_SUCCESS="✅ Extracted"
+    MSG_FAILED="❌ Failed: "
+    MSG_SKIPPED="⏭️ Skipped (already exists): "
     MSG_SAVED="Videos saved in original location"
     MSG_SEGMENTS="video(s)"
     MSG_OPEN_FOLDER="Open Folder"
     MSG_CLOSE="Close"
     MSG_OK="OK"
-    MSG_SELECT_FOLDER="Select Folder"
-    MSG_SELECT_FILES="Select Files"
-    MSG_CANCEL="Cancel"
-    MSG_CHOOSE="Choose an action:"
 fi
 
 # ─── Python extraction script (embedded, passed via stdin) ───
@@ -128,7 +148,7 @@ print(f"FOLDER:{FOLDER}")
 print("MODE:folder")
 '
     local OUTPUT
-    OUTPUT=$(/usr/bin/python3 - "$FOLDER" <<< "$FULL_SCRIPT" 2>/dev/null)
+    OUTPUT=$("$PYTHON3" - "$FOLDER" <<< "$FULL_SCRIPT" 2>/dev/null)
     echo "$OUTPUT"
 }
 
@@ -181,11 +201,11 @@ print(f"FILES:{len(valid)}")
 print("MODE:file")
 '
     local OUTPUT
-    OUTPUT=$(/usr/bin/python3 "$@" <<< "$FULL_SCRIPT" 2>/dev/null)
+    OUTPUT=$("$PYTHON3" "$@" <<< "$FULL_SCRIPT" 2>/dev/null)
     echo "$OUTPUT"
 }
 
-# ─── OSA Script dialogs (all with explicit error handling) ───
+# ─── OSA Script dialogs (drag-and-drop mode only) ───
 show_alert() {
     local MSG="$1"
     local TITLE="${2:-$APP_NAME}"
@@ -193,30 +213,11 @@ show_alert() {
     osascript -e "display dialog \"$MSG\" with title \"$TITLE\" buttons {\"$BTNS\"} default button 1" >/dev/null 2>&1 || true
 }
 
-choose_folder() {
-    log_debug "choose_folder: opening folder picker dialog..."
-    local RESULT
-    RESULT=$(osascript -e "POSIX path of (choose folder with prompt \"$MSG_CHOOSE_FOLDER\")" 2>/dev/null) || true
-    log_debug "choose_folder: osascript returned (exit: $?): '$RESULT'"
-    # Return empty string if user cancelled (not an error)
-    echo "${RESULT%/}"
-}
-
-choose_files() {
-    log_debug "choose_files: opening file picker dialog..."
-    local RESULT
-    RESULT=$(osascript -e "POSIX path of (choose file of type {\"public.jpeg\",\"public.jpeg-2000\"} with prompt \"$MSG_CHOOSE_FILES\" multiple selections allowed)" 2>/dev/null) || true
-    log_debug "choose_files: osascript returned (exit: $?): '$RESULT'"
-    echo "$RESULT"
-}
-
 # ══════════════════════════════════
-#  Main
+#  Main (drag-and-drop mode)
 # ══════════════════════════════════
 
 ARGS=("$@")
-
-# Detect mode from arguments (drag-and-drop)
 MODE=""
 INPUTS=()
 
@@ -242,44 +243,6 @@ elif $HAS_FOLDER; then
     fi
 fi
 
-# No args: show choice dialog
-if [ -z "$MODE" ]; then
-    log_debug "Showing choice dialog..."
-    CHOICE=$(osascript -e "display dialog \"$MSG_CHOOSE\" with title \"$APP_NAME\" buttons {\"$MSG_CANCEL\", \"$MSG_SELECT_FILES\", \"$MSG_SELECT_FOLDER\"} default button 3 cancel button 1" 2>/dev/null) || true
-    log_debug "Choice dialog result: '$CHOICE' (exit: $?)"
-
-    case "$CHOICE" in
-        *"$MSG_SELECT_FOLDER"*|*,3)
-            log_debug "User chose: select folder"
-            FOLDER=$(choose_folder)
-            log_debug "choose_folder returned: '$FOLDER'"
-            if [ -n "$FOLDER" ]; then
-                MODE="folder"
-                INPUTS=("$FOLDER")
-            else
-                log_debug "Folder selection cancelled/empty, exiting"
-            fi
-            ;;
-        *"$MSG_SELECT_FILES"*|*,2)
-            log_debug "User chose: select files"
-            FILES=$(choose_files)
-            log_debug "choose_files returned: '$FILES'"
-            if [ -n "$FILES" ]; then
-                MODE="file"
-                IFS=$'\n' INPUTS=($FILES)
-            else
-                log_debug "File selection cancelled/empty, exiting"
-            fi
-            ;;
-        *)
-            # User cancelled or closed dialog — exit cleanly
-            log_debug "Dialog cancelled or unknown choice: '$CHOICE', exiting clean"
-            exit 0
-            ;;
-    esac
-fi
-
-# If still no mode, exit cleanly
 [ -z "$MODE" ] && { log_debug "No mode set, exiting"; exit 0; }
 log_debug "Mode: $MODE, Inputs: ${INPUTS[*]}"
 
@@ -353,4 +316,3 @@ case "$MODE" in
 esac
 
 log_debug "=== MiExt finished normally ==="
-# Keep debug log for inspection (cleaned up on next run or manually)
